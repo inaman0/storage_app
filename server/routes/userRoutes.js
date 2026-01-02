@@ -1,5 +1,6 @@
 import express from "express";
 import checkAuth from "../middlewares/auth.js";
+import { ObjectId } from "mongodb";
 
 const router = express.Router();
 
@@ -13,29 +14,32 @@ router.post('/register', async (req, res, next) => {
       message: "A user with this email address already exists. Please try logging in or use a different email."
     })
   }
-  
+  const rootDirId = new ObjectId()
+  const userId = new ObjectId()
   try {
     const dirCollection = db.collection('directories')
-    const userRootDir =  await dirCollection.insertOne({
+    await dirCollection.insertOne({
+      _id: rootDirId,
       name : `root-${email}`,
       parentDirId : null,
+      userId,
     })
-    
-    const rootDirId = userRootDir.insertedId
 
-    const createdUser = await db.collection('users').insertOne({
+    await db.collection('users').insertOne({
+      _id:userId,
       name,
       email,
       password,
       rootDirId,
     })
-
-    const userId = createdUser.insertedId
-
-    await dirCollection.updateOne({_id : rootDirId},{$set : {userId}})
     res.status(201).json({message: "User Registered"})
   } catch(err) {
-    next(err)
+    if(err.code === 121){
+      res.status(400).json({error : "Invalid input, please enter valid details"})
+    }
+    else{
+      next(err)
+    }
   }
 
 })

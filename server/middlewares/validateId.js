@@ -1,6 +1,8 @@
+import {ObjectId} from "mongodb"
+
 export default function (req,res,next,id){
 
-    if(id.length !== 24){
+    if(!ObjectId.isValid(id)){
         return res.status(404).json({message : "Invalid id"})
     }
     next()
