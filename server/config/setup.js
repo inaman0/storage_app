@@ -3,7 +3,7 @@ import connectDB,{ client } from "./db.js";
 try {
   const db = await connectDB();
 
-  const command = "collMod";
+  const command = "create";
 
   await db.command({
     [command]: "users",

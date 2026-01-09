@@ -1,15 +1,18 @@
-import { MongoClient } from "mongodb"
+import mongoose from "mongoose"
 
-export const client = new MongoClient("mongodb://127.0.0.1:27017/storageApp")
-
-export default async function connectDB(){
-    await client.connect()
-    const db = client.db()
-    return db
+export async function connectDB(){
+    try{
+        await mongoose.connect("mongodb://naman:naman@localhost:27017/storageApp")
+        console.log("database connected")
+    }
+    catch(err){
+        console.log("could not connect databse")
+        process.exit(1)
+    }
 }
 
 process.on("SIGINT", async ()=>{
     await client.close()
-    console.log("Client disconnected")
+    console.log("Database disconnected")
     process.exit(0)
 })
