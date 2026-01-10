@@ -206,7 +206,9 @@ function DirectoryView() {
 
     // Start upload
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${BASE_URL}/file/${dirId || ""}`, true);
+    const uploadUrl = dirId ? `${BASE_URL}/file/${dirId}` : `${BASE_URL}/file`;
+
+    xhr.open("POST", uploadUrl, true);
     xhr.withCredentials = true;
     xhr.setRequestHeader("filename", currentItem.name);
 

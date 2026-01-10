@@ -1,10 +1,8 @@
 import { createWriteStream } from "fs";
 import { rm } from "fs/promises";
 import path from "path";
-import { ObjectId } from "mongodb";
 import File from "../models/fileModel.js";
-import Directory from "../models/fileModel.js";
-import mongoose from "mongoose";
+import Directory from "../models/directoryModel.js"
 
 export const getFile = async (req, res) => {
     const { id } = req.params;
@@ -27,14 +25,11 @@ export const getFile = async (req, res) => {
 }
 
 export const createFile = async (req, res, next) => {
+  const parentDirId = req.params.parentDirId || req.user.rootDirId;
   try {
-    const parentDirId = new mongoose.Types.ObjectId(
-      req.params.parentDirId ?? req.user.rootDirId
-    );
-    // console.log(parentDirId)
     const parentDirData = await Directory.findOne({
       _id: parentDirId,
-      userId: req.user._id
+      userId: req.user._id,
     }).lean();
     
     if (!parentDirData) {
@@ -42,16 +37,17 @@ export const createFile = async (req, res, next) => {
     }
 
     const filename = req.headers.filename || "untitled";
-    const extension = path.extname(filename) || "unknown";
-
+    const extension = path.extname(filename);
     const fileDoc = await File.create({
-      name: filename,
       extension,
-      parentDirId,
-      userId: req.user._id
+      name: filename,
+      parentDirId: parentDirData._id,
+      userId: req.user._id,
     });
 
-    const fullFileName = `${fileDoc._id}${extension}`;
+    const fileId = fileDoc._id;
+
+    const fullFileName = `${fileId}${extension}`;
     const writeStream = createWriteStream(`./storage/${fullFileName}`);
 
     req.pipe(writeStream);
@@ -72,7 +68,7 @@ export const createFile = async (req, res, next) => {
 
 export const renameFile = async (req, res, next) => {
     const { id } = req.params;
-    const file = await File.findOne({_id: new ObjectId(id) , userId : req.user._id});
+    const file = await File.findOne({_id: id , userId : req.user._id});
 
     if (!file) {
         return res.status(404).json({ error: "File not found!" });
