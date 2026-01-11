@@ -12,7 +12,7 @@ export async function connectDB(){
 }
 
 process.on("SIGINT", async ()=>{
-    await client.close()
+    await mongoose.close()
     console.log("Database disconnected")
     process.exit(0)
 })

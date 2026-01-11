@@ -4,13 +4,7 @@ import mongoose from "mongoose";
 
 export const createUser = async (req, res, next) => {
     const {name, email, password} = req.body
-    const foundUser = await User.findOne({email}).lean()
-    if(foundUser) {
-        return res.status(409).json({
-        error: "User already exists",
-        message: "A user with this email address already exists. Please try logging in or use a different email."
-        })
-    }
+
     const rootDirId = new mongoose.Types.ObjectId()
     const userId = new mongoose.Types.ObjectId()
 
@@ -36,11 +30,19 @@ export const createUser = async (req, res, next) => {
         res.status(201).json({message: "User Registered"})
     } catch(err) {
         if(err.code === 121){
-        res.status(400).json({error : "Invalid input, please enter valid details"})
-        session.abortTransaction()
+            res.status(400).json({error : "Invalid input, please enter valid details"})
+            session.abortTransaction()
+        }
+        else if(err.code === 11000){
+            if(err.keyValue.email){
+                return res.status(409).json({
+                    error: "This email already exists",
+                    message: "A user with this email already exists. Please try with different email"
+                })
+            }
         }
         else{
-        next(err)
+            next(err)
         }
     }
 }
