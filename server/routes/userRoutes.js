@@ -1,24 +1,20 @@
 import express from "express";
 import checkAuth from "../middlewares/auth.js";
-
-import { createUser, userLogin } from "../controllers/userController.js";
+import {
+  getCurrentUser,
+  login,
+  logout,
+  register,
+} from "../controllers/userController.js";
 
 const router = express.Router();
 
-router.post('/register', createUser)
+router.post("/register", register);
 
-router.post('/login', userLogin)
+router.post("/login", login);
 
-router.get('/', checkAuth, (req, res) => {
-  res.status(200).json({
-    name: req.user.name,
-    email: req.user.email,
-  })
-})
+router.get("/", checkAuth, getCurrentUser);
 
-router.post('/logout', (req, res) => {
-  res.clearCookie('uid')
-  res.status(204).end()
-})
+router.post("/logout", logout);
 
-export default router
+export default router;
