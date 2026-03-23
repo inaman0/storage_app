@@ -1,12 +1,12 @@
 import Directory from "../models/directoryModel.js";
 import User from "../models/userModel.js";
 import mongoose, { Types } from "mongoose";
-import crypto from "node:crypto";
+import Session from "../models/sessionModel.js";
 
 export const register = async (req, res, next) => {
   const { name, email, password } = req.body;
   const session = await mongoose.startSession();
-  const hashedPassword = crypto.createHash('sha256').update(password).digest("hex")
+
   try {
     const rootDirId = new Types.ObjectId();
     const userId = new Types.ObjectId();
@@ -28,7 +28,7 @@ export const register = async (req, res, next) => {
         _id: userId,
         name,
         email,
-        password : hashedPassword,
+        password,
         rootDirId,
       },
       { session }
@@ -39,6 +39,7 @@ export const register = async (req, res, next) => {
     res.status(201).json({ message: "User Registered" });
   } catch (err) {
     session.abortTransaction();
+    console.log(err);
     if (err.code === 121) {
       res
         .status(400)
@@ -60,22 +61,26 @@ export const register = async (req, res, next) => {
 export const login = async (req, res, next) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
-  const newpassword = crypto.createHash('sha256').update(password).digest('hex')
 
   if (!user) {
     return res.status(404).json({ error: "Invalid Credentials" });
   }
 
-  if(user.password !== newpassword){
-    return res.status(404).json({error : "Invalid Credentials"})
+  const isPasswordValid = await user.comparePassword(password);
+
+  if (!isPasswordValid) {
+    return res.status(404).json({ error: "Invalid Credentials" });
   }
 
-  const cookiePayload = JSON.stringify({
-    id: user._id.toString(),
-    expiry: Math.round(Date.now() / 1000 + 100000),
-  });
+  const allSessions = await Session.find({ userId: user.id });
 
-  res.cookie("token", Buffer.from(cookiePayload).toString("base64url"), {
+  if (allSessions.length >= 2) {
+    await allSessions[0].deleteOne();
+  }
+
+  const session = await Session.create({ userId: user._id });
+
+  res.cookie("sid", session.id, {
     httpOnly: true,
     signed: true,
     maxAge: 60 * 1000 * 60 * 24 * 7,
@@ -90,7 +95,17 @@ export const getCurrentUser = (req, res) => {
   });
 };
 
-export const logout = (req, res) => {
-  res.clearCookie("token");
+export const logout = async (req, res) => {
+  const { sid } = req.signedCookies;
+  await Session.findByIdAndDelete(sid);
+  res.clearCookie("sid");
+  res.status(204).end();
+};
+
+export const logoutAll = async (req, res) => {
+  const { sid } = req.signedCookies;
+  const session = await Session.findById(sid);
+  await Session.deleteMany({ userId: session.userId });
+  res.clearCookie("sid");
   res.status(204).end();
 };

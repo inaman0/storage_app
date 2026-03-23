@@ -1,30 +1,49 @@
-import {model, Schema} from 'mongoose'
+import { model, Schema } from "mongoose";
+import bcrypt from "bcrypt";
 
-const userSchema = new Schema({
+const userSchema = new Schema(
+  {
     name: {
-        type: String,
-        required :true 
+      type: String,
+      required: true,
+      minLength: [
+        3,
+        "name field should a string with at least three characters",
+      ],
     },
     email: {
-        type: String,
-        required :true,
-        unique: true,
-        match: [/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/]
+      type: String,
+      required: true,
+      unique: true,
+      match: [
+        /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+.[a-zA-Z]{2,}$/,
+        "please enter a valid email",
+      ],
     },
     password: {
-        type: String,
-        required :true 
+      type: String,
+      required: true,
+      minLength: 4,
     },
     rootDirId: {
-        type: Schema.Types.ObjectId,
-        required :true,
-        ref: 'Directory'
-    }
-},{
-    strict : "throw",
-    versionKey: false
-})
+      type: Schema.Types.ObjectId,
+      ref: "Directory",
+    },
+  },
+  {
+    strict: "throw",
+  }
+);
 
-const User = model("User",userSchema)
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return ;
+  this.password = await bcrypt.hash(this.password, 12);
+});
 
-export default User
+userSchema.methods.comparePassword = async function (candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+const User = model("User", userSchema);
+
+export default User;
