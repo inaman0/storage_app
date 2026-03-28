@@ -1,101 +1,126 @@
 import { rm } from "fs/promises";
-import { ObjectId } from "mongodb";
 import Directory from "../models/directoryModel.js";
 import File from "../models/fileModel.js";
-import mongoose from "mongoose";
 
-export const getDirectoryById = async (req, res) => {
+export const getDirectory = async (req, res) => {
   const user = req.user;
   const _id = req.params.id || user.rootDirId.toString();
-
-  const directoryData = await Directory.findOne({_id}).lean()
+  const directoryData = await Directory.findOne({ _id }).lean();
   if (!directoryData) {
-    return res.status(404).json({ error: "Directory not found or you do not have access to it!" });
+    return res
+      .status(404)
+      .json({ error: "Directory not found or you do not have access to it!" });
   }
 
-  const files = await File.find({parentDirId : directoryData._id}).lean()
-  const directories = await Directory.find({parentDirId : _id}).lean()
-
-  return res.status(200).json({ ...directoryData, files: files.map((file)=>({...file,id:file._id})), directories: directories.map((dir)=>({...dir,id:dir._id}))});
-}
+  const files = await File.find({ parentDirId: directoryData._id }).lean();
+  const directories = await Directory.find({ parentDirId: _id }).lean();
+  return res.status(200).json({
+    ...directoryData,
+    files: files.map((dir) => ({ ...dir, id: dir._id })),
+    directories: directories.map((dir) => ({ ...dir, id: dir._id })),
+  });
+};
 
 export const createDirectory = async (req, res, next) => {
+  const user = req.user;
+
+  const parentDirId = req.params.parentDirId || user.rootDirId.toString();
+  const dirname = req.headers.dirname || "New Folder";
   try {
-    const user = req.user
-    const parentDirId = req.params.parentDirId || user.rootDirId.toString()
-    const dirname = req.headers.dirname || 'New Folder'
+    const parentDir = await Directory.findOne({
+      _id: parentDirId,
+    }).lean();
 
-    const parentDir = await Directory.findOne({_id : parentDirId}).lean()
-    if(!parentDir) return res.status(404).json({message: "Parent Directory Does not exist!"})
+    if (!parentDir)
+      return res
+        .status(404)
+        .json({ message: "Parent Directory Does not exist!" });
 
-    await Directory.create({
+    await Directory.insertOne({
       name: dirname,
       parentDirId,
-      userId: user._id
-    })
-    return res.status(200).json({ message: "Directory Created!" })
+      userId: user._id,
+    });
+
+    return res.status(201).json({ message: "Directory Created!" });
   } catch (err) {
-    if(err.code === 121){
-      res.status(400).json({error : "Invalid input, please enter valid details"})
-    }
-    else{
-      next(err)
+    if (err.code === 121) {
+      res
+        .status(400)
+        .json({ error: "Invalid input, please enter valid details" });
+    } else {
+      next(err);
     }
   }
-}
+};
 
 export const renameDirectory = async (req, res, next) => {
   const user = req.user;
   const { id } = req.params;
   const { newDirName } = req.body;
-
   try {
     await Directory.findOneAndUpdate(
-      { 
-        _id:id, 
-        userId:user._id 
-      },
       {
-        name : newDirName
-      })
+        _id: id,
+        userId: user._id,
+      },
+      { name: newDirName }
+    );
     res.status(200).json({ message: "Directory Renamed!" });
   } catch (err) {
     next(err);
   }
-}
+};
 
 export const deleteDirectory = async (req, res, next) => {
   const { id } = req.params;
 
-  try{
-    const dirData = await Directory.findOne({_id : id , userId : req.user._id})
-    if(!dirData){
-      return res.status(404).json({error : "Directory not found"})
+  try {
+    const directoryData = await Directory.findOne({
+      _id: id,
+      userId: req.user._id,
+    })
+      .select("_id")
+      .lean();
+
+    if (!directoryData) {
+      return res.status(404).json({ error: "Directory not found!" });
     }
 
-    async function getDirectoryContent(id){
-      let files = await File.find({parentDirId : id}).select('extension').lean()
-      let directories = await Directory.find({parentDirId : id}).select('_id').lean()
+    async function getDirectoryContents(id) {
+      let files = await File.find({ parentDirId: id })
+        .select("extension")
+        .lean();
+      let directories = await Directory.find({ parentDirId: id })
+        .select("_id")
+        .lean();
 
-      for (const {_id,name} of directories){
-        const {files : childfiles,directories:childdirectories} = await getDirectoryContent(_id)
-        files = [...files,...childfiles]
-        directories = [...directories,...childdirectories]
+      for (const { _id } of directories) {
+        const { files: childFiles, directories: childDirectories } =
+          await getDirectoryContents(_id);
+
+        files = [...files, ...childFiles];
+        directories = [...directories, ...childDirectories];
       }
 
-      return {files,directories}
+      return { files, directories };
     }
 
-    const {files,directories} = await getDirectoryContent(id)
-    for(const {_id,extension} of files){
-      await rm(`./storage/${_id.toString()}${extension}`)
+    const { files, directories } = await getDirectoryContents(id);
+
+    for (const { _id, extension } of files) {
+      await rm(`./storage/${_id.toString()}${extension}`);
     }
 
-    await File.deleteMany({_id : {$in : files.map(({_id})=> _id)}})
-    await Directory.deleteMany({_id : {$in : [...directories.map(({_id})=> _id),id]}})
+    await File.deleteMany({
+      _id: { $in: files.map(({ _id }) => _id) },
+    });
 
-    res.json({message : "file deleted successfully"})
-  }catch(err){
-    next(err)
-  } 
-}
+    await Directory.deleteMany({
+      _id: { $in: [...directories.map(({ _id }) => _id), id] },
+    });
+  } catch (err) {
+    next(err);
+  }
+  return res.json({ message: "Files deleted successfully" });
+};

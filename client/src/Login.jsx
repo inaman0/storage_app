@@ -6,13 +6,17 @@ const Login = () => {
   const BASE_URL = "http://localhost:4000";
 
   const [formData, setFormData] = useState({
-    email: "anurag@gmail.com",
+    email: "pandya.naman.23031@iitgoa.ac.in",
     password: "abcd",
   });
 
   // serverError will hold the error message from the server
   const [serverError, setServerError] = useState("");
-
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -43,19 +47,49 @@ const Login = () => {
       });
 
       const data = await response.json();
+
       if (data.error) {
-        // If there's an error, set the serverError message
         setServerError(data.error);
       } else {
-        // On success, navigate to home or any other protected route
-        navigate("/");
+        // ✅ OTP sent
+        setOtpSent(true);
+        setServerError("");
       }
     } catch (error) {
-      console.error("Error:", error);
-      setServerError("Something went wrong. Please try again.");
+      console.error(error);
+      setServerError("Something went wrong.");
     }
   };
+  const handleVerifyOtp = async () => {
+    try {
+      setIsVerifying(true);
 
+      const res = await fetch(`${BASE_URL}/user/login-verify-otp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          otp,
+        }),
+        credentials: "include",
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        setOtpVerified(true);
+        navigate("/"); // ✅ login success
+      } else {
+        setOtpError(data.error || "Invalid OTP");
+      }
+    } catch (err) {
+      setOtpError("Something went wrong");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
   // If there's an error, we'll add "input-error" class to both fields
   const hasError = Boolean(serverError);
 
@@ -98,10 +132,35 @@ const Login = () => {
           {/* Absolutely-positioned error message below password field */}
           {serverError && <span className="error-msg">{serverError}</span>}
         </div>
-
-        <button type="submit" className="submit-button">
-          Login
-        </button>
+        {otpSent && (
+          <div className="form-group">
+            <label className="label">Enter OTP</label>
+            <div className="otp-wrapper">
+              <input
+                className="input"
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="Enter OTP"
+                maxLength={4}
+              />
+              <button
+                type="button"
+                className="otp-button"
+                onClick={handleVerifyOtp}
+                disabled={isVerifying}
+              >
+                {isVerifying ? "Verifying..." : "Verify OTP"}
+              </button>
+            </div>
+            {otpError && <span className="error-msg">{otpError}</span>}
+          </div>
+        )}
+        {!otpSent && (
+          <button type="submit" className="submit-button">
+            Send OTP
+          </button>
+)}
       </form>
 
       {/* Link to the register page */}

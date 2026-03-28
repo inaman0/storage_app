@@ -2,9 +2,19 @@ import Directory from "../models/directoryModel.js";
 import User from "../models/userModel.js";
 import mongoose, { Types } from "mongoose";
 import Session from "../models/sessionModel.js";
+import OTP from "../models/otpModel.js";
+import { sendOtpService } from "../services/sendOtpService.js";
 
 export const register = async (req, res, next) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, otp } = req.body;
+  const otpRecord = await OTP.findOne({ email, otp });
+
+  if (!otpRecord) {
+    return res.status(400).json({ error: "Invalid or Expired OTP!" });
+  }
+
+  await otpRecord.deleteOne();
+
   const session = await mongoose.startSession();
 
   try {
@@ -57,8 +67,54 @@ export const register = async (req, res, next) => {
     }
   }
 };
+export const loginVerifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
 
-export const login = async (req, res, next) => {
+  const user = await User.findOne({ email });
+
+  if (!user) {
+    return res.status(404).json({ error: "User not found" });
+  }
+
+  const otpRecord = await OTP.findOne({ email });
+
+  if (!otpRecord) {
+    return res.status(400).json({ error: "OTP not found" });
+  }
+
+  // Expiry check
+  const isExpired =
+    new Date() - new Date(otpRecord.createdAt) > 10 * 60 * 1000;
+
+  if (isExpired) {
+    return res.status(400).json({ error: "OTP expired" });
+  }
+
+  if (otpRecord.otp !== otp) {
+    return res.status(400).json({ error: "Invalid OTP" });
+  }
+
+  // ✅ Delete OTP after use
+  await otpRecord.deleteOne();
+
+  // ✅ CREATE SESSION HERE
+  const allSessions = await Session.find({ userId: user._id });
+
+  if (allSessions.length >= 2) {
+    await allSessions[0].deleteOne();
+  }
+
+  const session = await Session.create({ userId: user._id });
+
+  res.cookie("sid", session.id, {
+    httpOnly: true,
+    signed: true,
+    maxAge: 60 * 1000 * 60 * 24 * 7,
+  });
+
+  return res.json({ message: "Login successful" });
+};
+export const login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
 
@@ -72,20 +128,10 @@ export const login = async (req, res, next) => {
     return res.status(404).json({ error: "Invalid Credentials" });
   }
 
-  const allSessions = await Session.find({ userId: user.id });
+  // ✅ Send OTP
+  await sendOtpService(email);
 
-  if (allSessions.length >= 2) {
-    await allSessions[0].deleteOne();
-  }
-
-  const session = await Session.create({ userId: user._id });
-
-  res.cookie("sid", session.id, {
-    httpOnly: true,
-    signed: true,
-    maxAge: 60 * 1000 * 60 * 24 * 7,
-  });
-  res.json({ message: "logged in" });
+  return res.json({ message: "OTP sent to your email" });
 };
 
 export const getCurrentUser = (req, res) => {
