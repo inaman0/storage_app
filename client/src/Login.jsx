@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { loginWithGoogle } from "./apis/loginWithGoogle.js";
+import { GoogleLogin } from "@react-oauth/google";
 import "./Auth.css";
 
 const Login = () => {
@@ -167,6 +169,27 @@ const Login = () => {
       <p className="link-text">
         Don't have an account? <Link to="/register">Register</Link>
       </p>
+      <div className="or">
+        Or
+      </div>
+      <div className="google-login">
+        <GoogleLogin
+          onSuccess={async (credentialResponse) => {
+            const data = await loginWithGoogle(credentialResponse.credential);
+            if (data.error) {
+              console.log(data);
+              return;
+            }
+            navigate("/");
+          }}
+          theme="filled_blue"
+          text="continue_with"
+          onError={() => {
+            console.log("Login Failed");
+          }}
+          useOneTap
+        />
+      </div>
     </div>
   );
 };

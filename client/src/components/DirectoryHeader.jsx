@@ -23,6 +23,7 @@ function DirectoryHeader({
   const [loggedIn, setLoggedIn] = useState(false);
   const [userName, setUserName] = useState("Guest User");
   const [userEmail, setUserEmail] = useState("guest@example.com");
+  const [userPicture,setUserPicture] = useState("")
 
   const userMenuRef = useRef(null);
   const navigate = useNavigate();
@@ -41,6 +42,7 @@ function DirectoryHeader({
           // Set user info if logged in
           setUserName(data.name);
           setUserEmail(data.email);
+          setUserPicture(data.picture);
           setLoggedIn(true);
         } else if (response.status === 401) {
           // User not logged in
@@ -71,28 +73,6 @@ function DirectoryHeader({
   const handleLogout = async () => {
     try {
       const response = await fetch(`${BASE_URL}/user/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (response.ok) {
-        console.log("Logged out successfully");
-        // Optionally reset local state
-        setLoggedIn(false);
-        setUserName("Guest User");
-        setUserEmail("guest@example.com");
-        navigate("/login");
-      } else {
-        console.error("Logout failed");
-      }
-    } catch (err) {
-      console.error("Logout error:", err);
-    } finally {
-      setShowUserMenu(false);
-    }
-  };
-  const handleLogoutAll = async () => {
-    try {
-      const response = await fetch(`${BASE_URL}/user/logout-all`, {
         method: "POST",
         credentials: "include",
       });
@@ -169,7 +149,7 @@ function DirectoryHeader({
             title="User Menu"
             onClick={handleUserIconClick}
           >
-            <FaUser />
+            {userPicture ? <img className="usePicture" src={userPicture} alt={userName}/> : (<FaUser />)}
           </button>
 
           {showUserMenu && (
@@ -188,14 +168,6 @@ function DirectoryHeader({
                   >
                     <FaSignOutAlt className="menu-item-icon" />
                     <span>Logout</span>
-                  </div>
-                  
-                  <div 
-                    className="user-menu-item login-btn"
-                    onClick={handleLogoutAll}
-                  >
-                    <FaSignOutAlt className="menu-item-icon" />
-                    <span>Logout All</span>
                   </div>
                 </>
               ) : (

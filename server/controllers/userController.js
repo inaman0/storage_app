@@ -82,7 +82,6 @@ export const loginVerifyOtp = async (req, res) => {
     return res.status(400).json({ error: "OTP not found" });
   }
 
-  // Expiry check
   const isExpired =
     new Date() - new Date(otpRecord.createdAt) > 10 * 60 * 1000;
 
@@ -94,10 +93,8 @@ export const loginVerifyOtp = async (req, res) => {
     return res.status(400).json({ error: "Invalid OTP" });
   }
 
-  // ✅ Delete OTP after use
   await otpRecord.deleteOne();
 
-  // ✅ CREATE SESSION HERE
   const allSessions = await Session.find({ userId: user._id });
 
   if (allSessions.length >= 2) {
@@ -138,6 +135,7 @@ export const getCurrentUser = (req, res) => {
   res.status(200).json({
     name: req.user.name,
     email: req.user.email,
+    picture: req.user.picture,
   });
 };
 

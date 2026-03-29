@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
 import "./Auth.css";
+import { loginWithGoogle } from "./apis/loginWithGoogle.js";
 
 const Register = () => {
   const BASE_URL = "http://localhost:4000";
@@ -256,6 +258,28 @@ const Register = () => {
       <p className="link-text">
         Already have an account? <Link to="/login">Login</Link>
       </p>
+      <div className="or">
+        <span>Or</span>
+      </div>
+
+      <div className="google-login">
+        <GoogleLogin
+          onSuccess={async (credentialResponse) => {
+            const data = await loginWithGoogle(credentialResponse.credential);
+            if (data.error) {
+              console.log(data);
+              return;
+            }
+            navigate("/");
+          }}
+          theme="filled_blue"
+          text="continue_with"
+          onError={() => {
+            console.log("Login Failed");
+          }}
+          useOneTap
+        />
+      </div>
     </div>
   );
 };

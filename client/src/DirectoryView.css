@@ -294,6 +294,11 @@
   color: #555;
 }
 
+.usePicture{
+  width:20px;
+  border-radius: 10px;
+}
+
 /* Icon to the left of the text (logout, login, etc.) */
 .menu-item-icon {
   font-size: 1rem;

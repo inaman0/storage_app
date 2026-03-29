@@ -9,7 +9,7 @@ const sessionSchema = new Schema(
     createdAt: {
       type: Date,
       default: Date.now,
-      expires: 3600,
+      index: { expires: 0 },
     },
   },
   {
