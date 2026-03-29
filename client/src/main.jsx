@@ -4,7 +4,7 @@ import './index.css'
 import App from './App.jsx'
 import {GoogleOAuthProvider} from '@react-oauth/google'
 
-const clientId="259624968087-tgkh2467e0hgpih7uq28tsrhearsi9q7.apps.googleusercontent.com"
+const clientId=process.env.GOOGLE_CLIENT_ID
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

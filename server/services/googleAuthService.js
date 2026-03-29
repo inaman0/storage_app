@@ -1,6 +1,6 @@
 import { OAuth2Client } from "google-auth-library";
 
-const clientId = "259624968087-tgkh2467e0hgpih7uq28tsrhearsi9q7.apps.googleusercontent.com"
+const clientId = process.env.GOOGLE_CLIENT_ID
 
 const client = new OAuth2Client({
     clientId
